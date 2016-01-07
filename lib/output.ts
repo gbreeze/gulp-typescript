@@ -89,29 +89,24 @@ export class Output {
 					return;
 				}
 				
-				if (this.project.singleOutput) {
-					file.original = this.project.input.firstSourceFile;
-					file.sourceMapOrigins = this.project.input.getFileNames(true).map(fName => this.project.input.getFile(fName));
-				} else {
-					const originalFileName = path.resolve(file.sourceMap.sourceRoot, file.sourceMap.sources[0]);
-					file.original = this.project.input.getFile(originalFileName);
-					
-					if (!file.original) {
-						console.error(`Could not find input file ${ originalFileName }. This is probably an issue of gulp-typescript.`
-							+ `\nPlease report it at https://github.com/ivogabe/gulp-typescript/issues`
-							+ `\nDebug information: \nsourceRoot = ${ JSON.stringify(file.sourceMap.sourceRoot) }\nsources = ${ JSON.stringify(file.sourceMap.sources) }`);
-						file.skipPush = true;
-						file.sourceMapOrigins = [];
-					} else {
-						file.skipPush = !file.original.gulp;
-						file.sourceMapOrigins = [file.original];
-					}
-					const [, jsExtension] = utils.splitExtension(file.sourceMap.file); // js or jsx
-					// Fix the output filename in the source map, which must be relative
-					// to the source root or it won't work correctly in gulp-sourcemaps if
-					// there are more transformations down in the pipeline.
-					file.sourceMap.file = path.relative(file.sourceMap.sourceRoot, originalFileName).replace(/\.ts$/, '.' + jsExtension);
-				}
+                const originalFileName = path.resolve(file.sourceMap.sourceRoot, file.sourceMap.sources[0]);
+                file.original = this.project.input.getFile(originalFileName);
+                
+                if (!file.original) {
+                    console.error(`Could not find input file ${ originalFileName }. This is probably an issue of gulp-typescript.`
+                        + `\nPlease report it at https://github.com/ivogabe/gulp-typescript/issues`
+                        + `\nDebug information: \nsourceRoot = ${ JSON.stringify(file.sourceMap.sourceRoot) }\nsources = ${ JSON.stringify(file.sourceMap.sources) }`);
+                    file.skipPush = true;
+                    file.sourceMapOrigins = [];
+                } else {
+                    file.skipPush = !file.original.gulp;
+                    file.sourceMapOrigins = [file.original];
+                }
+                const [, jsExtension] = utils.splitExtension(file.sourceMap.file); // js or jsx
+                // Fix the output filename in the source map, which must be relative
+                // to the source root or it won't work correctly in gulp-sourcemaps if
+                // there are more transformations down in the pipeline.
+                file.sourceMap.file = path.relative(file.sourceMap.sourceRoot, originalFileName).replace(/\.ts$/, '.' + jsExtension);				
 
 				this.applySourceMaps(file);
 
@@ -178,16 +173,16 @@ export class Output {
 
 		let root: string;
 		if (this.project.singleOutput) {
-			root = file.original.gulp.base;
+			root = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + path.sep;
 		} else if (this.project.options.outDir !== undefined) {
-			root = file.original.gulp.cwd + '/';
+			root = file.original.gulp.cwd + path.sep;
 		} else {
 			root = '';
 		}
 
 		let base: string;
 		if (this.project.options.outDir !== undefined) {
-			base = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + '/';
+			base = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + path.sep;
 		} else {
 			base = file.original.gulp.base;
 		}
