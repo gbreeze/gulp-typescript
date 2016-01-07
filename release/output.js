@@ -44,7 +44,6 @@ var Output = (function () {
      * @param fileName The extensionless filename.
      */
     Output.prototype.addOrMergeFile = function (fileName, extension, kind, content) {
-        var _this = this;
         var file = this.files[utils.normalizePath(fileName)];
         if (file) {
             file.extension[kind] = extension;
@@ -57,30 +56,24 @@ var Output = (function () {
                     file.skipPush = true;
                     return;
                 }
-                if (this.project.singleOutput) {
-                    file.original = this.project.input.firstSourceFile;
-                    file.sourceMapOrigins = this.project.input.getFileNames(true).map(function (fName) { return _this.project.input.getFile(fName); });
+                var originalFileName = path.resolve(file.sourceMap.sourceRoot, file.sourceMap.sources[0]);
+                file.original = this.project.input.getFile(originalFileName);
+                if (!file.original) {
+                    console.error(("Could not find input file " + originalFileName + ". This is probably an issue of gulp-typescript.")
+                        + "\nPlease report it at https://github.com/ivogabe/gulp-typescript/issues"
+                        + ("\nDebug information: \nsourceRoot = " + JSON.stringify(file.sourceMap.sourceRoot) + "\nsources = " + JSON.stringify(file.sourceMap.sources)));
+                    file.skipPush = true;
+                    file.sourceMapOrigins = [];
                 }
                 else {
-                    var originalFileName = path.resolve(file.sourceMap.sourceRoot, file.sourceMap.sources[0]);
-                    file.original = this.project.input.getFile(originalFileName);
-                    if (!file.original) {
-                        console.error(("Could not find input file " + originalFileName + ". This is probably an issue of gulp-typescript.")
-                            + "\nPlease report it at https://github.com/ivogabe/gulp-typescript/issues"
-                            + ("\nDebug information: \nsourceRoot = " + JSON.stringify(file.sourceMap.sourceRoot) + "\nsources = " + JSON.stringify(file.sourceMap.sources)));
-                        file.skipPush = true;
-                        file.sourceMapOrigins = [];
-                    }
-                    else {
-                        file.skipPush = !file.original.gulp;
-                        file.sourceMapOrigins = [file.original];
-                    }
-                    var _a = utils.splitExtension(file.sourceMap.file), jsExtension = _a[1]; // js or jsx
-                    // Fix the output filename in the source map, which must be relative
-                    // to the source root or it won't work correctly in gulp-sourcemaps if
-                    // there are more transformations down in the pipeline.
-                    file.sourceMap.file = path.relative(file.sourceMap.sourceRoot, originalFileName).replace(/\.ts$/, '.' + jsExtension);
+                    file.skipPush = !file.original.gulp;
+                    file.sourceMapOrigins = [file.original];
                 }
+                var _a = utils.splitExtension(file.sourceMap.file), jsExtension = _a[1]; // js or jsx
+                // Fix the output filename in the source map, which must be relative
+                // to the source root or it won't work correctly in gulp-sourcemaps if
+                // there are more transformations down in the pipeline.
+                file.sourceMap.file = path.relative(file.sourceMap.sourceRoot, originalFileName).replace(/\.ts$/, '.' + jsExtension);
                 this.applySourceMaps(file);
                 if (!this.project.sortOutput) {
                     this.emit(file);
@@ -143,17 +136,17 @@ var Output = (function () {
             return;
         var root;
         if (this.project.singleOutput) {
-            root = file.original.gulp.base;
+            root = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + path.sep;
         }
         else if (this.project.options.outDir !== undefined) {
-            root = file.original.gulp.cwd + '/';
+            root = file.original.gulp.cwd + path.sep;
         }
         else {
             root = '';
         }
         var base;
         if (this.project.options.outDir !== undefined) {
-            base = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + '/';
+            base = path.resolve(file.original.gulp.cwd, this.project.options.outDir) + path.sep;
         }
         else {
             base = file.original.gulp.base;
